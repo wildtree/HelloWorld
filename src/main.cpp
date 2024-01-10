@@ -5,6 +5,7 @@
 #include <lineeditor.h>
 #include <graph.h>
 #include <zmap.h>
+#include <keyboard.h>
 
 const int KEYBOARD_I2C_ADDR = 0x08;
 const int KEYBOARD_INT = 5;
@@ -14,6 +15,8 @@ static ZVScroll *zvs = NULL, *prompt = NULL;
 static LineEditor *le = NULL;
 static Canvas *cv = NULL;
 static ZMapRoot *zmap = NULL;
+static KeyBoard *k = NULL;
+static SPIClass SPI2;
 
 const String credit[] = {
     "ハイハイスクールアドベンチャー",
@@ -40,7 +43,6 @@ void setup() {
     auto cfg = M5.config();
     M5Cardputer.begin(cfg);
     M5.Display.setRotation(1);
-    SPIClass SPI2;
     SPI2.begin(
       M5.getPin(m5::pin_name_t::sd_spi_sclk),
       M5.getPin(m5::pin_name_t::sd_spi_miso),
@@ -71,6 +73,7 @@ void setup() {
     cv = new Canvas(64, 0, 256, 152);
     zvs = new ZVScroll(160, 16, 0, 95);
     prompt = new ZVScroll(224,0,0,127);
+    k = new M5CardputerKeyBoard();
     y = zvs->scrollLine();
     M5.Display.setTextColor(WHITE);
     for(int i = 0 ; i < 4 ; i++)
@@ -96,10 +99,11 @@ void loop() {
     // put your main code here, to run repeatedly:
     uint8_t c;
 
-    M5Cardputer.update();
-    if (M5Cardputer.Keyboard.isPressed())
+    if (k->wait_any_key())
     {
         cv->cls();
+        zmap->setCursor(1);
+        zmap->curMapData().draw(cv);
     }
 /*
   if (xQueueReceive(keyboard_queue,&c, 0))

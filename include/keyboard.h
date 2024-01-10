@@ -57,9 +57,11 @@ public:
 };
 
 #include <M5Cardputer.h>
+#include <queue>
 class M5CardputerKeyBoard : public KeyBoard
 {
 protected:
+    std::queue<uint8_t> _buf;
 public:
     M5CardputerKeyBoard() : KeyBoard(m5::board_t::board_M5StampS3)
     {
