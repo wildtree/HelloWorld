@@ -29,6 +29,7 @@ void setup() {
     // put your setup code here, to run once:
     auto cfg = M5.config();
     M5Cardputer.begin(cfg);
+    M5.Display.setRotation(1);
     // M5.Lcd.loadFont("fonts/RuikaMonoKyohkan-04-16",SD);
     M5.Display.setFont(&fonts::lgfxJapanGothic_8);
     M5.Display.println("Hello World!");
@@ -45,7 +46,7 @@ void setup() {
     M5Cardputer.Keyboard.begin();
     M5.Display.setTextColor(GREEN);
     M5.Display.println("キー入力待ち。Waiting key...");
-    cv = new Canvas(0, 3*16, 240, 96);
+    cv = new Canvas(0, 3*16, 240, 135-3*16);
     y = 10 * 16;
     vsc = new ZVScroll(y, 16);
     y = vsc->scrollLine();
@@ -53,7 +54,7 @@ void setup() {
     le = new LineEditor();
 
     cv->cls();
-    cv->line(0,0,240 - 1,96 - 1,RED);
+    cv->line(0,0,240 - 1,135 - 3*16 - 1,RED);
     cv->paint(0,10,BLUE, RED);
     cv->paint(100,0,GREEN,RED);
 }
