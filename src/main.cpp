@@ -1,17 +1,27 @@
-
+#include <SD.h>
 #include <M5Unified.h>
 #include <M5Cardputer.h>
 #include <vscroll.h>
 #include <lineeditor.h>
 #include <graph.h>
+#include <zmap.h>
 
 const int KEYBOARD_I2C_ADDR = 0x08;
 const int KEYBOARD_INT = 5;
 // static xQueueHandle keyboard_queue = NULL;
 uint16_t y = 0, x = 0;
-static ZVScroll *vsc = NULL;
+static ZVScroll *zvs = NULL, *prompt = NULL;
 static LineEditor *le = NULL;
 static Canvas *cv = NULL;
+static ZMapRoot *zmap = NULL;
+
+const String credit[] = {
+    "ハイハイスクールアドベンチャー",
+    "Copyright(c)1995-2024",
+    "ZOBplus",  
+    "hiro"
+};
+
 /*
 static void IRAM_ATTR keyboard_cb()
 {
@@ -30,10 +40,24 @@ void setup() {
     auto cfg = M5.config();
     M5Cardputer.begin(cfg);
     M5.Display.setRotation(1);
+    SPIClass SPI2;
+    SPI2.begin(
+      M5.getPin(m5::pin_name_t::sd_spi_sclk),
+      M5.getPin(m5::pin_name_t::sd_spi_miso),
+      M5.getPin(m5::pin_name_t::sd_spi_mosi),
+      M5.getPin(m5::pin_name_t::sd_spi_ss)
+    );
+    while (false == SD.begin(M5.getPin(m5::pin_name_t::sd_spi_ss), SPI2, 25000000))
+    {
+      M5.Display.println("SD Wait ...");
+      delay(500);
+    }
+    M5.Display.fillRect(0,0,240,135,BLACK);
     // M5.Lcd.loadFont("fonts/RuikaMonoKyohkan-04-16",SD);
-    M5.Display.setFont(&fonts::lgfxJapanGothic_8);
-    M5.Display.println("Hello World!");
-    M5.Display.println("こんにちは世界");
+    //M5.Display.setFont(&fonts::lgfxJapanGothic_8);
+    //M5.Display.setCursor(0, 95);
+    //M5.Display.println("Hello World!");
+    //M5.Display.println("こんにちは世界");
     //M5.lcd.unloadFont();
     //Wire.begin();
     //
@@ -44,19 +68,28 @@ void setup() {
     //digitalWrite(KEYBOARD_INT, HIGH);
 
     M5Cardputer.Keyboard.begin();
-    M5.Display.setTextColor(GREEN);
-    M5.Display.println("キー入力待ち。Waiting key...");
-    cv = new Canvas(0, 3*16, 240, 135-3*16);
-    y = 10 * 16;
-    vsc = new ZVScroll(y, 16);
-    y = vsc->scrollLine();
-
+    cv = new Canvas(64, 0, 256, 152);
+    zvs = new ZVScroll(160, 16, 0, 95);
+    prompt = new ZVScroll(224,0,0,127);
+    y = zvs->scrollLine();
+    M5.Display.setTextColor(WHITE);
+    for(int i = 0 ; i < 4 ; i++)
+    {
+        zvs->scrollLine();
+        zvs->print(credit[i]);
+    }
     le = new LineEditor();
+    M5.Display.setCursor(0,224);    
+    prompt->setTextColor(GREEN);
+    prompt->print("何かキーを押してください。");
+    //prompt->invalidate();
+    //M5.Display.setFont(&fonts::Font8x8C64);
 
     cv->cls();
-    cv->line(0,0,240 - 1,135 - 3*16 - 1,RED);
-    cv->paint(0,10,BLUE, RED);
-    cv->paint(100,0,GREEN,RED);
+    zmap = new ZMapRoot("/HHSAdv/map.dat");
+    zmap->setCursor(86);
+    zmap->curMapData().draw(cv);
+    //cv->line(0,0,25)
 }
 
 void loop() {

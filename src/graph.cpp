@@ -4,6 +4,25 @@
 
 #include <graph.h>
 
+const float Canvas::blueFilter[] = {
+    0.0F, 0.0F, 0.1F,
+    0.0F, 0.0F, 0.2F,
+    0.0F, 0.0F, 0.7F,
+};
+
+const float Canvas::redFilter[] = {
+    0.7F, 0.0F, 0.0F,
+    0.2F, 0.0F, 0.0F,
+    0.1F, 0.0F, 0.0F,
+};
+
+const float Canvas::sepiaFilter[] = {
+    0.269021F, 0.527950F, 0.103030F,
+    0.209238F, 0.410628F, 0.080135F,
+    0.119565F, 0.234644F, 0.045791F,
+};
+
+#if 0
 Queue::Queue(int size)
     : _size(size), _head(0), _tail(0)
 {
@@ -36,16 +55,18 @@ Queue::pop()
     if (_head == _size) _head = 0;
     return p;
 }
+#endif 
+
 
 Canvas::Canvas(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
-    : _ox(x), _oy(y), _w(w), _h(h)
+    : _ox(x), _oy(y), _w(w), _h(h), _colorFilter(nullptr)
 {
     _v = new uint16_t [_w * _h];
     cls();
 }
 
 Canvas::Canvas(const Canvas &x)
-    : _ox(x._ox), _oy(x._oy), _w(x._w), _h(x._h)
+    : _ox(x._ox), _oy(x._oy), _w(x._w), _h(x._h), _colorFilter(x._colorFilter)
 {
     _v = new uint16_t [_w * _h];
     cls();
@@ -57,19 +78,33 @@ Canvas::~Canvas()
     delete [] _v;
 }
 
+uint16_t
+Canvas::applyFilter(uint16_t c)
+{
+    float b = (float)(c & 0x1f);
+    float g = (float)((c >> 5) & 0x3f);
+    float r = (float)((c >> 11) & 0x1f);
+    uint8_t rd = (uint8_t)(_colorFilter[0] * r + _colorFilter[1] * g + _colorFilter[2] * b);
+    uint8_t gd = (uint8_t)(_colorFilter[3] * r + _colorFilter[4] * g + _colorFilter[5] * b);
+    uint8_t bd = (uint8_t)(_colorFilter[6] * r + _colorFilter[7] * g + _colorFilter[8] * b);
+    return (uint16_t)((rd & 0x1f) << 11)|((gd & 0x3f) << 5)|(bd & 0x1f);
+}
+
 void
 Canvas::pset(uint16_t x, uint16_t y, uint16_t col)
  {
     if (x >= _w || y >= _h) return;
-    M5.Lcd.drawPixel(_ox + x, _oy + y, col);
+    // M5.Display.drawPixel(_ox + x, _oy + y, col);
     _v[x + y * _w] = col;
 }
 
 void
-Canvas::cls()
+Canvas::cls(uint16_t c)
  { 
-    M5.Lcd.fillRect(_ox, _oy, _w, _h, BLACK); 
-    for (int i = 0 ; i < _w * _h ; i++) _v[i] = BLACK;
+    // M5.Display.fillRect(_ox, _oy, _w, _h, c); 
+    //memset(_v, c, _w * _h);
+    for (int i = 0 ; i < _w * _h ; i++) _v[i] = c;
+    invalidate();
  }
 
 void
@@ -98,15 +133,18 @@ Canvas::line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t col)
     if (dx == 0 && dy == 0)
     {
         pset(x0, y0, col);
+        return;
     }
     if (dy == 0)
     {
         for (x = x0 ; x != x1 ; x += ddx) pset(x, y0, col);
+        pset(x1, y0, col);
         return;
     }
     if (dx == 0)
     {
         for (y = y0 ; y != y1 ; y += ddy) pset(x0, y, col);
+        pset(x0, y1, col);
         return;
     }
 
@@ -149,7 +187,7 @@ Canvas::paint(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc)
     int wx;
     uint16_t c;
 
-    Queue q;    
+    std::queue<Point> q;
     c = pget(x, y);
     if (c == fc || c == bc)
     {
@@ -158,7 +196,8 @@ Canvas::paint(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc)
     q.push(Point(x,y));
     while (!q.empty())
     {
-        Point p = q.pop();
+        Point p = q.front();
+        q.pop();
         c = pget(p.x, p.y);
         if (c == fc || c == bc) continue;
         for (l = p.x - 1 ; l >= 0 ; l--)
@@ -277,4 +316,51 @@ Canvas::tonePaint(const uint8_t tone[], bool tiling)
             pset(wx, wy, cc);
         }
     }
+}
+
+void
+Canvas::drawRect(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t c)
+{
+    line(x0, y0, x1, y0, c);
+    line(x1, y0, x1, y1, c);
+    line(x0, y1, x1, y1, c);
+    line(x0, y1, x0, y0, c);
+}
+
+void
+Canvas::fillRect(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t c)
+{
+    if (y0 > y1)
+    {
+        uint16_t y = y0;
+        y0 = y1;
+        y1 = y;
+    }
+    for (uint16_t y = y0 ; y <= y1 ; y++)
+    {
+        line(x0, y, x1, y, c);
+    }
+}
+
+void
+Canvas::colorFilter(void)
+{
+    if (_colorFilter == nullptr) return;
+    for (int x = 0 ; x < _w ; x++)
+    {
+        for (int y = 0 ; y < _h ; y++)
+        {
+            pset(x, y, applyFilter(pget(x, y)));
+        }
+    }
+}
+
+void
+Canvas::invalidate() const
+{
+    float affine[6] = {0.625, 0.0, (float)(_ox) * 0.625, 0.0, 0.625, (float)(_oy) * 0.625};
+    M5.Display.startWrite();
+    M5.Display.setSwapBytes(true);
+    M5.Display.pushImageAffineWithAA(affine, _w, _h, _v);
+    M5.Display.endWrite();
 }
