@@ -72,7 +72,7 @@ bool
 M5CardputerKeyBoard::wait_any_key()
 {
     bool r = false;
-    M5.update();
+    M5Cardputer.update();
     if (M5Cardputer.Keyboard.isChange())
     {
         r = M5Cardputer.Keyboard.isPressed();
@@ -90,16 +90,22 @@ M5CardputerKeyBoard::fetch_key(uint8_t &c)
         _buf.pop();
         return true;
     }
-    M5.update();
+    M5Cardputer.update();
     if (M5Cardputer.Keyboard.isChange())
     {
         if (M5Cardputer.Keyboard.isPressed())
         {
             Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
+            Serial.printf("Keys: %d letters\r\n", status.word.size());
             for(auto i:status.word)
             {
+                Serial.printf("%02x = '%c' ", i, isascii(i) ? i : '.');
                 _buf.push(i);
             }
+            if (status.del) _buf.push(0x08);
+            //if (status.space) _buf.push(' ');
+            if (status.enter) _buf.push('\r');
+            Serial.print("\r\n");
             c = _buf.front();
             _buf.pop();
             

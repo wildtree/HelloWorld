@@ -17,6 +17,8 @@ static Canvas *cv = NULL;
 static ZMapRoot *zmap = NULL;
 static KeyBoard *k = NULL;
 static SPIClass SPI2;
+static bool title = true;
+static 
 
 const String credit[] = {
     "ハイハイスクールアドベンチャー",
@@ -81,10 +83,12 @@ void setup() {
         zvs->scrollLine();
         zvs->print(credit[i]);
     }
-    le = new LineEditor();
+    le = new LineEditor(30);
     M5.Display.setCursor(0,224);    
     prompt->setTextColor(GREEN);
     prompt->print("何かキーを押してください。");
+    prompt->print(String(M5.getBoard()));
+    prompt->invalidate();
     //prompt->invalidate();
     //M5.Display.setFont(&fonts::Font8x8C64);
 
@@ -98,13 +102,52 @@ void setup() {
 void loop() {
     // put your main code here, to run repeatedly:
     uint8_t c;
-
-    if (k->wait_any_key())
+    if (title)
     {
+      if (k->wait_any_key())
+      {
         cv->cls();
         zmap->setCursor(1);
         zmap->curMapData().draw(cv);
+        prompt->cls();
+        prompt->setTextColor(GREEN);
+        prompt->print("どうする? ");
+        prompt->setTextColor(WHITE);
+        prompt->invalidate();
+        title = false;
+      }
     }
+    else
+    {
+      if (k->fetch_key(c))
+      {
+        String cmd = le->putChar(c);
+        if (c == '\r')
+        {
+          //M5.Display.fillRect(80, 224, 240, 16, BLACK);
+          //run(cmd);
+          zvs->scrollLine();
+          zvs->setTextColor(CYAN);
+          zvs->print(">>> ");
+          zvs->print(cmd);
+          zvs->setTextColor(WHITE);
+          zvs->invalidate();
+          prompt->cls();
+          prompt->setTextColor(GREEN);
+          prompt->print("どうする? ");
+          prompt->setTextColor(WHITE);
+          prompt->invalidate();
+          return;
+        }
+        prompt->cls();
+        prompt->setTextColor(GREEN);
+        prompt->print("どうする? ");
+        prompt->setTextColor(WHITE);
+        prompt->print((String)*le);
+        prompt->invalidate();        
+      }
+    }
+
 /*
   if (xQueueReceive(keyboard_queue,&c, 0))
   {

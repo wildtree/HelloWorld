@@ -131,7 +131,7 @@ ZVScroll::cls(void)
 {
     _tx = 0;
     _ty = 0;
-    _canvas->fillRect(0, _top, XMax, YMax - _bottom - _top, BLACK);
+    _canvas->fillRect(0, 0, XMax, _h, BLACK);
     invalidate();
 }
 
